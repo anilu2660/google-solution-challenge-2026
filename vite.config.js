@@ -31,4 +31,11 @@ export default defineConfig({
     // Silence the chunk-size warning (recharts + chart.js are large but tree-shaken)
     chunkSizeWarningLimit: 1000,
   },
+
+  // ADD THIS SECTION TO FIX THE RENDER ERROR
+  server: {
+    allowedHosts: [
+      'google-solution-challenge-2026.onrender.com'
+    ]
+  }
 })
