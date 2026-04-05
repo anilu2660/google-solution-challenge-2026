@@ -41,7 +41,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
             <div className="space-y-6">
               <div>
                 <label className="block text-xs uppercase tracking-widest text-[#adaaaa] mb-2 font-medium">
-                  AI Service API Key (OpenAI)
+                  AI Service API Key (GEMINI)
                 </label>
                 <div className="relative">
                   <Key size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#565555]" />
@@ -49,12 +49,12 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     type="password"
                     value={localKey}
                     onChange={(e) => setLocalKey(e.target.value)}
-                    placeholder={import.meta.env.VITE_OPENAI_API_KEY ? "Using key from .env" : "Enter your OpenAI API Key..."}
+                    placeholder={import.meta.env.VITE_OPENAI_API_KEY ? "Using key from .env" : "Enter your Gemini API Key..."}
                     className="w-full bg-[#0e0e0e] border-b border-[#20201f] pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-[#00E5FF] transition-colors"
                   />
                 </div>
                 <p className="mt-2 text-[10px] text-[#565555]">
-                  Place your <code>VITE_OPENAI_API_KEY</code> in your <code>.env</code> file for automatic loading.
+                  Place your <code>VITE_GEMINI_API_KEY</code> in your <code>.env</code> file for automatic loading.
                 </p>
               </div>
 
