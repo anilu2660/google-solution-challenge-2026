@@ -59,7 +59,7 @@ const AICopilot = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', background: 'rgba(52,168,83,0.1)', borderRadius: 99, border: '1px solid rgba(52,168,83,0.25)' }}>
             <ShieldCheck size={11} style={{ color: '#34A853' }} />
-            <span style={{ fontSize: 9, color: '#34A853', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>GPT-4o</span>
+            <span style={{ fontSize: 9, color: '#34A853', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Gemini 3.1 Pro</span>
           </div>
           {data && (
             <button
