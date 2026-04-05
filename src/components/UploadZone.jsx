@@ -288,7 +288,7 @@ const UploadZone = () => {
             {/* Status */}
             <div style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
               <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700, marginBottom: 6, color: 'var(--text-1)' }}>
-                {phase < 4 ? 'Statistical Analysis Running' : phase < 5 ? 'GPT-4o Live Analysis' : 'Finalizing Dashboard'}
+                {phase < 4 ? 'Statistical Analysis Running' : phase < 5 ? 'Gemini 3.1 pro Live Analysis' : 'Finalizing Dashboard'}
               </h2>
               {fileName && (
                 <p style={{ fontSize: 12, color: 'var(--text-3)', fontFamily: 'monospace', marginBottom: 12 }}>
@@ -333,7 +333,7 @@ const UploadZone = () => {
                     maxHeight: 90, overflow: 'hidden',
                   }}
                 >
-                  <span style={{ color: '#4285F4', fontWeight: 700 }}>GPT-4o » </span>
+                  <span style={{ color: '#4285F4', fontWeight: 700 }}>Gemini3.1 pro » </span>
                   {streamPreview}<span style={{ animation: 'pulse 1s infinite', display: 'inline-block', width: 6, height: 12, background: '#4285F4', verticalAlign: 'middle', marginLeft: 2, borderRadius: 2 }} />
                 </motion.div>
               )}
@@ -398,7 +398,7 @@ const UploadZone = () => {
               </h1>
               <p style={{ fontSize: 15, color: 'var(--text-2)', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
                 Upload your HR dataset — EquiLens computes real statistical bias metrics instantly,
-                then streams GPT-4o analysis for deep insights and a remediation roadmap.
+                then streams Gemini 3.1 pro analysis for deep insights and a remediation roadmap.
               </p>
             </div>
 
@@ -493,7 +493,7 @@ const UploadZone = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 24 }}>
               {[
                 { label: 'End-to-End Encrypted', color: '#4285F4' },
-                { label: 'LangChain + OpenAI',   color: '#34A853' },
+                { label: 'LangChain + Gemini ',   color: '#34A853' },
                 { label: 'GDPR Safe',            color: '#FBBC05' },
               ].map(({ label, color }, i) => (
                 <React.Fragment key={label}>
