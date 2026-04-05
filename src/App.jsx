@@ -6,6 +6,7 @@ import AICopilot from './components/AICopilot';
 import SettingsModal from './components/SettingsModal';
 import ParticleBackground from './components/ParticleBackground';
 import ErrorBoundary from './components/ErrorBoundary';
+import Login from './components/Login';
 import { Settings, Sun, Moon, BarChart3 } from 'lucide-react';
 import './index.css';
 
@@ -66,6 +67,7 @@ const EquiLensApp = () => {
   const { data } = useAppContext();
   const { theme, toggle } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const isDark = theme === 'dark';
 
   return (
@@ -167,7 +169,13 @@ const EquiLensApp = () => {
 
       {/* ── Main ───────────────────────────────────────────────────────────── */}
       <main style={{ flex: 1, position: 'relative', zIndex: 10, display: 'flex', overflow: 'hidden' }}>
-        {!data ? (
+        {!isAuthenticated ? (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+            <ErrorBoundary name="Login">
+              <Login onLogin={() => setIsAuthenticated(true)} />
+            </ErrorBoundary>
+          </div>
+        ) : !data ? (
           <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
             <ErrorBoundary name="UploadZone">
               <UploadZone />
