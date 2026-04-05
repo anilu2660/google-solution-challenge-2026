@@ -319,6 +319,9 @@ EquiLens natively generates reports referencing **Regulation (EU) 2024/1689** (E
 
 ---
 
+## Deployment:
+Vercel: https://google-solution-challenge-2026.vercel.app/
+
 ## License
 
 This project is licensed under the **MIT License**.
