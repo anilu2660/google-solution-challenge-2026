@@ -31,6 +31,11 @@ EquiLens follows a two-stage analysis pipeline:
 
 ## Features
 
+### 🔒 Secure Access Portal
+- Advanced glassmorphism login interface acting as the initial gateway.
+- Form validation and simulated authentication delays for a realistic demo experience.
+- Uses dummy credentials for easy testing (e.g., Email: `admin@equilens.ai`, Password: `admin`).
+
 ### 🔍 Real-Time Bias Detection
 - Upload any HR CSV (hiring, promotion, selection data)
 - Automatic column classification: **demographic**, **outcome**, and **proxy** variables
@@ -182,7 +187,14 @@ Output will be in the `dist/` directory.
 
 ## Usage Guide
 
-### Step 1 — Upload Your HR Dataset
+### Step 1 — Authenticate
+- The application begins with a secure login screen.
+- For the demo, you can use the following dummy credentials (or any valid email format and password):
+  - **Email:** `admin@equilens.ai`
+  - **Password:** `admin`
+- After a successful login, you will be directed to the dataset upload area.
+
+### Step 2 — Upload Your HR Dataset
 - Drag and drop a **CSV file** onto the upload zone, or click to browse
 - EquiLens reads the full file client-side (no server upload needed)
 - A sample dataset is provided: [`mock_hr_data.csv`](./mock_hr_data.csv)
@@ -196,25 +208,25 @@ Output will be in the `dist/` directory.
 | Proxy variables | `ZipCode`, `School`, `Neighborhood`, `Income` |
 | Numeric features | `InterviewScore`, `SkillTestScore`, `YearsAtCompany` |
 
-### Step 2 — View the Audit Dashboard
+### Step 3 — View the Audit Dashboard
 After upload, the statistical engine runs instantly and Gemini begins an asynchronous full audit (streaming). You'll see:
 - **Risk level badge** (CRITICAL / HIGH / MEDIUM / LOW)
 - **Metric cards** with animated counters
 - **AI Summary banner** with the Gemini executive summary
 - All charts and findings update once the AI response completes
 
-### Step 3 — Chat with the AI Co-Pilot
+### Step 4 — Chat with the AI Co-Pilot
 - Use the right-panel chat to ask any question about your dataset
 - Examples: *"Why is the disparity for Black applicants so high?"*, *"What's the legal risk here?"*, *"Suggest Python code to fix this bias"*
 - Click **"Explain for HR"** for a non-technical, HR-manager-friendly summary
 
-### Step 4 — Run What-If Scenarios
+### Step 5 — Run What-If Scenarios
 - Scroll to the bottom of the dashboard
 - Drag the **Mitigation Intensity** slider to simulate bias reduction
 - Watch the trade-off charts update in real time
 - At 55–70% intensity, the EEOC 4/5ths threshold is typically satisfied
 
-### Step 5 — Export Reports
+### Step 6 — Export Reports
 - **Dashboard PDF**: Click **"Export Report"** at the top of the dashboard
 - **EU AI Act PDF**: Click **"Generate EU AI Act Compliance Report"** at the bottom of the What-If Simulator
 
