@@ -82,8 +82,8 @@ EquiLens follows a two-stage analysis pipeline:
 | **Styling** | Tailwind CSS v4 + Vanilla CSS |
 | **Charts** | Chart.js / react-chartjs-2 (Bar, Doughnut, Radar) + Recharts (AreaChart) |
 | **Animations** | Framer Motion + Three.js (particle background) |
-| **AI Orchestration** | LangChain (`@langchain/core`, `@langchain/openai`) |
-| **LLM** | OpenAI GPT-4o (`gpt-4o`) |
+| **AI Orchestration** | LangChain (`@langchain/core`, `@langchain/gemini`) |
+| **LLM** | Google Gemini (Gemini 3.1pro) |
 | **PDF Generation** | jsPDF + html2canvas |
 | **Icons** | Lucide React |
 | **Markdown Rendering** | react-markdown |
@@ -97,7 +97,7 @@ google-solution-challenge/
 ├── public/                     # Static assets
 ├── src/
 │   ├── components/
-│   │   ├── AICopilot.jsx       # GPT-4o chat panel (right sidebar)
+│   │   ├── AICopilot.jsx       # Gemini chat panel (right sidebar)
 │   │   ├── Dashboard.jsx       # Main audit dashboard with all charts
 │   │   ├── ErrorBoundary.jsx   # React error boundary wrapper
 │   │   ├── ParticleBackground.jsx  # Three.js animated particle field
@@ -155,7 +155,7 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-VITE_OPENAI_API_KEY="sk-proj-your-openai-key-here"
+VITE_GEMINI_API_KEY="sk-proj-your-gemini-key-here"
 ```
 
 > **⚠️ Never commit your `.env` file to Git.** It is already included in `.gitignore`.
@@ -168,7 +168,7 @@ VITE_OPENAI_API_KEY="sk-proj-your-openai-key-here"
 npm run dev
 ```
 
-The app will be available at **http://localhost:5173**
+The app will be available at **https://google-solution-challenge-2026.vercel.app/**
 
 ### 5. Build for Production
 
