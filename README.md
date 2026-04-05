@@ -6,7 +6,7 @@
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react)
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite)
 ![LangChain](https://img.shields.io/badge/LangChain-Orchestrated-1C3C3C?style=flat-square)
-![OpenAI](https://img.shields.io/badge/GPT--4o-Powered-412991?style=flat-square&logo=openai)
+![OpenAI](https://img.shields.io/badge/Gemini--3.1Pro-Powered-412991?style=flat-square&logo=openai)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 **Google Solution Challenge Submission**
@@ -331,7 +331,7 @@ This project is licensed under the **MIT License**.
 ## Acknowledgements
 
 - Built with ❤️ for the **Google Solution Challenge**
-- Powered by [LangChain](https://langchain.com/), [OpenAI GPT-4o](https://openai.com/), [React](https://react.dev/), [Vite](https://vite.dev/), [Chart.js](https://www.chartjs.org/), [Recharts](https://recharts.org/), [Framer Motion](https://www.framer.com/motion/), [Three.js](https://threejs.org/), and [jsPDF](https://github.com/parallax/jsPDF)
+- Powered by [LangChain](https://langchain.com/), [Gemini](https://gemini.com/), [React](https://react.dev/), [Vite](https://vite.dev/), [Chart.js](https://www.chartjs.org/), [Recharts](https://recharts.org/), [Framer Motion](https://www.framer.com/motion/), [Three.js](https://threejs.org/), and [jsPDF](https://github.com/parallax/jsPDF)
 - EEOC 4/5ths rule reference: [U.S. Equal Employment Opportunity Commission](https://www.eeoc.gov/)
 - EU AI Act reference: [EUR-Lex Regulation (EU) 2024/1689](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689)
 
