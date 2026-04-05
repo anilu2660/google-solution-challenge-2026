@@ -11,7 +11,7 @@
 
 **Google Solution Challenge Submission**
 
-*Detect, understand, and remediate algorithmic bias in HR datasets — powered by LangChain & GPT-4o.*
+*Detect, understand, and remediate algorithmic bias in HR datasets — powered by LangChain & Gemini3.1 Pro.*
 
 [Live Demo](#running-locally) · [Features](#features) · [Setup](#setup) · [Architecture](#architecture)
 
@@ -25,7 +25,7 @@
 
 EquiLens follows a two-stage analysis pipeline:
 1. **Client-side statistical engine** (`csvAnalysis.js`) computes real, verifiable bias metrics — no AI hallucination.
-2. **LangChain + GPT-4o layer** (`apiService.js`) enriches those pre-computed statistics with expert narrative, root-cause analysis, legal impact predictions, and actionable remediation steps.
+2. **LangChain + Gemini 3.1 Pro layer** (`apiService.js`) enriches those pre-computed statistics with expert narrative, root-cause analysis, legal impact predictions, and actionable remediation steps.
 
 ---
 
@@ -46,8 +46,8 @@ EquiLens follows a two-stage analysis pipeline:
 - **CSV Data Preview** — GitHub-style head + tail table view of the uploaded dataset
 - **PDF Export** — one-click dashboard export to PDF
 
-### 🤖 AI Ethics Co-Pilot (GPT-4o)
-- Persistent chat interface powered by **LangChain** + OpenAI's `gpt-4o`
+### 🤖 AI Ethics Co-Pilot (Gemini 3.1 pro)
+- Persistent chat interface powered by **LangChain** + Google Gemini 3.1 Pro`
 - **Context-aware**: the AI always knows your dataset metrics, approval rates, and detected correlations
 - **"Explain for HR"** button generates a plain-English, non-technical explanation of the audit findings
 - **Response quality evaluation**: every AI reply is graded for bias sensitivity, accuracy, and actionability
@@ -69,7 +69,7 @@ EquiLens follows a two-stage analysis pipeline:
 - Beautiful dark/light theme with animated **Three.js particle background**
 - Google-brand color palette (#4285F4, #EA4335, #FBBC05, #34A853)
 - Smooth **Framer Motion** animations on all dashboard cards
-- Live **streaming text cursor** while GPT-4o generates the audit
+- Live **streaming text cursor** while Gemini3.1 flash generates the audit
 - Fully responsive layout with glassmorphism header
 
 ---
@@ -129,7 +129,7 @@ google-solution-challenge/
 ### Prerequisites
 - **Node.js** ≥ 18.x
 - **npm** ≥ 9.x
-- An **OpenAI API Key** with access to `gpt-4o`
+- An **Gemini API Key** with access to `gemini3.1Pro`
 
 ### 1. Clone the Repository
 
@@ -197,10 +197,10 @@ Output will be in the `dist/` directory.
 | Numeric features | `InterviewScore`, `SkillTestScore`, `YearsAtCompany` |
 
 ### Step 2 — View the Audit Dashboard
-After upload, the statistical engine runs instantly and GPT-4o begins an asynchronous full audit (streaming). You'll see:
+After upload, the statistical engine runs instantly and Gemini begins an asynchronous full audit (streaming). You'll see:
 - **Risk level badge** (CRITICAL / HIGH / MEDIUM / LOW)
 - **Metric cards** with animated counters
-- **AI Summary banner** with the GPT-4o executive summary
+- **AI Summary banner** with the Gemini executive summary
 - All charts and findings update once the AI response completes
 
 ### Step 3 — Chat with the AI Co-Pilot
@@ -248,7 +248,7 @@ User uploads CSV
              ▼
 ┌─────────────────────────────────┐
 │   apiService.js (LangChain)     │
-│   - GPT-4o streaming invoke     │
+│   - Gemini3.1 pro streaming invoke     │
 │   - System + Human message      │
 │   - JSON output parse           │
 │   → summary, riskLevel,         │
