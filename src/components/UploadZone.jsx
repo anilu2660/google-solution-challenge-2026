@@ -11,7 +11,7 @@ const PHASES = [
   { id: 'stats',      label: 'Computing real statistical metrics…',   icon: '📊' },
   { id: 'correlate',  label: 'Detecting proxy variable correlations…', icon: '🔗' },
   { id: 'parity',     label: 'Calculating demographic parity scores…', icon: '⚖️' },
-  { id: 'llm',        label: 'GPT-4o bias narrative analysis…',        icon: '🧠' },
+  { id: 'llm',        label: 'Gemini3.1Pro bias narrative analysis…',        icon: '🧠' },
   { id: 'done',       label: 'Audit complete — building dashboard…',   icon: '✅' },
 ];
 
@@ -461,7 +461,7 @@ const UploadZone = () => {
                   </h2>
                   <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 400 }}>
                     Drop a CSV file — EquiLens will <strong style={{ color: '#4285F4' }}>statistically compute</strong> real bias
-                    metrics, then use <strong style={{ color: '#34A853' }}>GPT-4o streaming</strong> for expert analysis.
+                    metrics, then use <strong style={{ color: '#34A853' }}>Gemini 3.1 Pro streaming</strong> for expert analysis.
                   </p>
                 </div>
 
