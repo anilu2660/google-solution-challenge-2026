@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Send, Sparkles, User, Bot, Loader2, ShieldCheck, AlertCircle,
-  Code2, Copy, Check, X, ChevronDown, ChevronUp, Terminal,
+  Code2, Copy, Check, X, ChevronDown, ChevronUp, Terminal, ImagePlus
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { analyzeBiasAgentic, explainReport, evaluateAIResponse, generateRemediationCode } from '../services/apiService';
@@ -198,11 +198,13 @@ const CodeViewer = ({ code, onClose }) => {
 const AICopilot = ({ theme }) => {
   const { messages, addMessage, setMessages, apiKey, data, insights, resetAudit } = useAppContext();
   const [input, setInput] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [remediationCode, setRemediationCode] = useState(null);
   const [showCodeViewer, setShowCodeViewer] = useState(false);
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -244,23 +246,34 @@ const AICopilot = ({ theme }) => {
     }
   };
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   /* ── Chat send ──────────────────────────────────────────────────── */
   const handleSend = async (e) => {
     if (e) e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !selectedImage) || isLoading) return;
     const userMsg = input.trim();
+    const currentImg = selectedImage;
     setInput('');
-    const newContext = [...messages, { role: 'user', content: userMsg }];
+    setSelectedImage(null);
+    const newContext = [...messages, { role: 'user', content: userMsg, image: currentImg }];
     setMessages(newContext);
     setIsLoading(true);
 
     try {
       const { content: aiResponse, rawMessages } = await analyzeBiasAgentic(apiKey, data, newContext);
 
-      const evaluation = await evaluateAIResponse(apiKey, data, aiResponse);
-
       // Update global context directly with everything including tool calls
-      setMessages([...newContext, ...rawMessages, { role: 'ai', content: aiResponse, evaluation }]);
+      setMessages([...newContext, ...rawMessages]);
     } catch (error) {
       addMessage({ role: 'ai', content: `Audit System Error: ${error.message}` });
     } finally {
@@ -399,7 +412,7 @@ const AICopilot = ({ theme }) => {
         flex: 1, overflowY: 'auto', padding: 16,
         display: 'flex', flexDirection: 'column', gap: 16,
       }}>
-        {messages.map((msg, i) => (
+        {messages.filter(msg => msg.role !== 'tool' && !(msg.tool_calls && !msg.content)).map((msg, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}
           >
@@ -424,6 +437,13 @@ const AICopilot = ({ theme }) => {
                 backdropFilter: 'blur(10px)',
               }}>
                 <div className="markdown-body">
+                  {msg.image && (
+                    <img 
+                      src={msg.image} 
+                      alt="User uploaded" 
+                      style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 8, maxHeight: 200, objectFit: 'contain' }} 
+                    />
+                  )}
                   <ReactMarkdown>{msg.content || (msg.tool_calls ? `Using dataset tools: ${msg.tool_calls.map(t => t.name).join(', ')}...` : `Tool result for ${msg.name}`)}</ReactMarkdown>
                 </div>
 
@@ -496,11 +516,42 @@ const AICopilot = ({ theme }) => {
         background: theme === 'dark' ? 'linear-gradient(0deg, rgba(6,11,24,0.95) 0%, rgba(10,15,30,0.8) 100%)' : '#ffffff', flexShrink: 0,
         position: 'relative', zIndex: 10, backdropFilter: 'blur(20px)',
       }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        {selectedImage && (
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
+            <img src={selectedImage} alt="Preview" style={{ height: 60, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card-2)' }} />
+            <button 
+              type="button" 
+              onClick={() => setSelectedImage(null)}
+              style={{ position: 'absolute', top: -6, right: -6, background: '#EF4444', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input 
+            type="file" 
+            accept="image/*" 
+            ref={fileInputRef} 
+            onChange={handleImageUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button 
+            type="button" 
+            onClick={() => fileInputRef.current.click()}
+            style={{
+              padding: 10, borderRadius: 12, border: '1px solid rgba(129,140,248,0.3)',
+              background: theme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(129,140,248,0.03)',
+              color: 'var(--text-1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.3s'
+            }}
+          >
+            <ImagePlus size={18} />
+          </button>
           <input
             type="text" value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Ask about data rows..."
+            placeholder="Ask anything or attach a chart..."
             style={{
               width: '100%', background: theme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(129,140,248,0.03)',
               border: '1px solid rgba(129,140,248,0.3)',
