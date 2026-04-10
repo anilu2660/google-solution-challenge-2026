@@ -4,7 +4,7 @@ EquiLens AI is a comprehensive, agentic platform designed to detect, analyze, an
 
 ## ✨ Features
 
-- **Agentic AI Co-Pilot**: An onboard, LangChain-powered assistant (`gpt-4o`) that actively chats with you, has *direct system tool access* to query your dataset rows, schema, and column statistics, and answers questions intelligently without guessing.
+- **Agentic AI Co-Pilot**: An onboard, LangChain-powered assistant (`gemini`) that actively chats with you, has *direct system tool access* to query your dataset rows, schema, and column statistics, and answers questions intelligently without guessing.
 - **Multimodal AI Vision**: Go beyond text datasets. Upload demographic charts or visual distributions to the Co-Pilot using the image attachment tool, and it will analyze them contextually alongside your HR data.
 - **Live Dataset Streaming**: Upload raw CSV files which are chunked and streamed to the LLM for deep narrative analytics, dynamic metric generation (Fairness Scores, Demographic Parity), and automated bias discovery.
 - **On-Demand Compliance Exporting**: The AI Co-Pilot can automatically generate, format, and download professional Markdown or PDF audit reports to your device (including structured EU AI Act compliance reports).
@@ -14,7 +14,7 @@ EquiLens AI is a comprehensive, agentic platform designed to detect, analyze, an
 
 - **Framework**: React 19 + Vite
 - **Styling**: Tailwind CSS (v4), Framer Motion, conditional Vanilla CSS
-- **AI/LLM Architecture**: LangChain, `@langchain/openai`, Zod (Structured LLM outputs)
+- **AI/LLM Architecture**: LangChain, `@langchain/gemini`, Zod (Structured LLM outputs)
 - **Data Visualization**: Recharts, Chart.js
 - **Document Generation**: jsPDF (Client-side PDF compilation)
 
@@ -37,7 +37,7 @@ npm install
 Create a \`.env\` file in the root directory and add your OpenAI API Key:
 
 \`\`\`env
-VITE_OPENAI_API_KEY=your_openai_api_key_here
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
 \`\`\`
 
 *Note: Alternatively, you can input your API key directly via the dashboard's built-in Settings UI.*
