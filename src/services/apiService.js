@@ -2,6 +2,8 @@ import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { RunnableSequence } from "@langchain/core/runnables";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
 
 /**
  * EquiLens AI Service Layer — Powered by LangChain & OpenAI
@@ -76,8 +78,29 @@ JSON STRUCTURE:
     "Strategic action 4",
     "Governance action 5"
   ],
-  "transparencyScore": 45
-}`;
+  "transparencyScore": 45,
+  "aiMetrics": {
+    "parityScore": 72,
+    "fairnessScore": 5.4,
+    "approvalRates": [
+      { "group": "GroupName", "rate": 78, "riskLevel": "LOW",  "aiNote": "brief note" },
+      { "group": "GroupName", "rate": 52, "riskLevel": "HIGH", "aiNote": "brief note" }
+    ],
+    "fingerprint": [72, 45, 68, 55, 70, 45],
+    "heatmap": [
+      { "x": "ColA", "y": "ColB", "value": 0.82, "riskLabel": "CRITICAL" },
+      { "x": "ColA", "y": "ColC", "value": 0.55, "riskLabel": "MEDIUM" }
+    ]
+  }
+}
+
+RULES FOR aiMetrics:
+- parityScore: integer 0–100. EEOC 4/5ths rule: (min_group_rate / max_group_rate) * 100. Must match your approvalRates.
+- fairnessScore: float 0–10. Weighted composite of parity, proxy exposure, data integrity, and transparency. Be honest.
+- approvalRates: array with one entry per detected demographic group. Use the pre-computed rates as a baseline but adjust with AI judgment if you detect inconsistencies. riskLevel = CRITICAL (<50%), HIGH (50-70%), MEDIUM (70-80%), LOW (>80%).
+- fingerprint: exactly 6 values [Parity, Proxy-Free, Integrity, Consistency, Coverage, Transparency], each 0–100. Benchmark is 80.
+- heatmap: keep same columns as pre-computed but use your AI judgment to assign more nuanced values 0–1. Include ALL pairs from the pre-computed heatmap.`;
+
 
   // ── Build the human message with injected stats ────────────────────────
   const humanMessage = `BIAS AUDIT REQUEST — Pre-Computed Statistical Analysis:
@@ -139,33 +162,153 @@ Perform your expert narrative bias audit and return JSON only.`;
    analyzeBias — AI Co-Pilot chat (data-aware)
    Uses template variables safely — no JSON examples in prompt.
 ══════════════════════════════════════════════════════════════════ */
-export const analyzeBias = async (apiKey, dashboardData, userPrompt) => {
+export const analyzeBiasAgentic = async (apiKey, dashboardData, chatHistory) => {
   const model = getModel(apiKey, 0.65);
 
-  // Build context string manually to avoid template variable conflicts
-  const systemContent = `You are the EquiLens AI Ethics Co-Pilot. You are an expert in algorithmic fairness and HR bias auditing.
-    
-CURRENT AUDIT DATA:
-- Dataset: ${dashboardData?.fileName || 'dataset.csv'} (${dashboardData?.rowCount || '?'} rows, ${dashboardData?.columnCount || '?'} columns)
+  // 1. Define Tools
+  const getDatasetSchemaTool = tool(
+    async () => {
+      const headers = dashboardData?.rawHeaders || [];
+      return JSON.stringify({ columns: headers });
+    },
+    {
+      name: "get_dataset_schema",
+      description: "Returns the exact list of column names in the uploaded dataset.",
+      schema: z.object({}),
+    }
+  );
+
+  const searchDatasetRowsTool = tool(
+    async ({ column, operator, value, limit }) => {
+      const rows = dashboardData?.rawRows || [];
+      if (!rows.length || !dashboardData?.rawHeaders?.includes(column)) {
+        return "Error: Empty dataset or column not found.";
+      }
+      const colIndex = dashboardData.rawHeaders.indexOf(column);
+      let results = [];
+      for (const row of rows) {
+        if (results.length >= limit) break;
+        const cellValue = String(row[colIndex]);
+        if (operator === "==" && cellValue === String(value)) results.push(row);
+        if (operator === "includes" && cellValue.includes(String(value))) results.push(row);
+      }
+      return JSON.stringify({ count: results.length, rows: results });
+    },
+    {
+      name: "search_dataset_rows",
+      description: "Search the dataset rows for a specific condition. Limit defaults to 5.",
+      schema: z.object({
+        column: z.string().describe("The column name to search on"),
+        operator: z.enum(["==", "includes"]),
+        value: z.string().describe("The value to search for"),
+        limit: z.number().default(5).describe("Max number of rows to return"),
+      }),
+    }
+  );
+
+  const calculateColumnStatsTool = tool(
+    async ({ column }) => {
+      const rows = dashboardData?.rawRows || [];
+      const headers = dashboardData?.rawHeaders || [];
+      if (!rows.length || !headers.includes(column)) return "Error: invalid column.";
+      const colIndex = headers.indexOf(column);
+      
+      const counts = {};
+      let numericSum = 0;
+      let validNumeric = 0;
+      
+      for (const row of rows) {
+        const val = row[colIndex];
+        if (val !== null && val !== undefined) {
+           const str = String(val).trim();
+           counts[str] = (counts[str] || 0) + 1;
+           const num = parseFloat(str);
+           if (!isNaN(num)) {
+             numericSum += num;
+             validNumeric++;
+           }
+        }
+      }
+      
+      const isNumeric = validNumeric > (rows.length * 0.5);
+      if (isNumeric) {
+         return JSON.stringify({ type: "numeric", validCount: validNumeric, average: numericSum / validNumeric });
+      } else {
+         const topKeys = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+         return JSON.stringify({ type: "categorical", topValues: Object.fromEntries(topKeys) });
+      }
+    },
+    {
+      name: "calculate_column_stats",
+      description: "Calculates aggregate stats for a specific column (average if numeric, or top value counts if categorical).",
+      schema: z.object({ column: z.string() })
+    }
+  );
+
+  const tools = [getDatasetSchemaTool, searchDatasetRowsTool, calculateColumnStatsTool];
+  const modelWithTools = model.bindTools(tools);
+
+  // 2. Build Context Message
+  const systemContent = `You are the EquiLens AI Ethics Co-Pilot. You have an agentic toolset giving you access to the user's raw dataset!
+  
+CURRENT METRICS:
+- Dataset: ${dashboardData?.fileName} (${dashboardData?.rowCount || '?'} rows)
 - Demographic Parity: ${dashboardData?.metrics?.parity ?? 'N/A'}%
-- Proxy Variables Detected: ${dashboardData?.metrics?.proxyVars ?? 'N/A'}
-- Overall Fairness Score: ${dashboardData?.metrics?.fairnessScore ?? 'N/A'}/10
-- Approval Rates: ${JSON.stringify(dashboardData?.approvalRates ?? [])}
-- High-Risk Correlations: ${JSON.stringify(dashboardData?.heatmap ?? [])}
+- Fairness Score: ${dashboardData?.metrics?.fairnessScore ?? 'N/A'}/10
 
 INSTRUCTIONS:
-- Answer the user's question using this audit data as context.
-- Provide actionable advice, not vague platitudes.
-- When suggesting code (pandas/Python), use markdown code blocks.
-- Be concise, data-driven, and appropriately urgent given the risk level.`;
+1. You can call tools to query the raw dataset. Use 'get_dataset_schema' to see columns, 'search_dataset_rows' to find specific examples, or 'calculate_column_stats' for deep details.
+2. If you use a tool, explain what you found smoothly.
+3. Be concise and authoritative.`;
 
   const messages = [
     { role: "system", content: systemContent },
-    { role: "human", content: userPrompt },
+    // ChatHistory mapping needs to handle roles carefully
+    ...chatHistory.map(m => ({ 
+      role: m.role === 'ai' ? 'ai' : (m.role === 'user' ? 'human' : m.role), 
+      content: m.content || "",
+      // Keep tool calls if any
+      ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}),
+      ...(m.tool_call_id ? { tool_call_id: m.tool_call_id } : {})
+    }))
   ];
 
-  const response = await model.invoke(messages);
-  return response.content;
+  // 3. Agent Loop
+  let currentMessages = [...messages];
+  let iterations = 0;
+  
+  while (iterations < 5) {
+    const rawResponse = await modelWithTools.invoke(currentMessages);
+    const response = {
+      role: 'ai',
+      content: rawResponse.content,
+      ...(rawResponse.tool_calls?.length ? { tool_calls: rawResponse.tool_calls } : {})
+    };
+    currentMessages.push(response);
+
+    if (!response.tool_calls || response.tool_calls.length === 0) {
+      // Finished
+      return { content: response.content, rawMessages: currentMessages.slice(messages.length) };
+    }
+
+    // Execute tools
+    for (const toolCall of response.tool_calls) {
+      const toolToRun = tools.find(t => t.name === toolCall.name);
+      if (toolToRun) {
+        const result = await toolToRun.invoke(toolCall.args);
+        currentMessages.push({
+          role: "tool",
+          name: toolCall.name,
+          tool_call_id: toolCall.id,
+          content: result
+        });
+      }
+    }
+    iterations++;
+  }
+
+  // Fallback
+  return { content: "I had to truncate my analysis due to complexity. Here's what I found so far...", rawMessages: currentMessages.slice(messages.length) };
 };
 
 /* ══════════════════════════════════════════════════════════════════
@@ -238,6 +381,66 @@ Focus on: 1) What the disparity means for real people. 2) Legal/ethical risks in
       content: `Audit: Parity=${dashboardData?.metrics?.parity}%, Risk=${insights?.riskLevel || 'HIGH'}, Findings=${JSON.stringify(insights?.keyFindings || [])}, Actions=${JSON.stringify(insights?.suggestions || [])}.
 Please explain this report simply and tell me exactly what I should do as an HR Lead.`,
     },
+  ];
+
+  const response = await model.invoke(messages);
+  return response.content;
+};
+
+/* ══════════════════════════════════════════════════════════════════
+   generateRemediationCode — Python/pandas + fairlearn code snippets
+   Receives audit stats and top findings, returns ready-to-run code
+   that data engineers can paste directly into a Jupyter notebook.
+══════════════════════════════════════════════════════════════════ */
+export const generateRemediationCode = async (apiKey, dashboardData, insights) => {
+  const model = getModel(apiKey, 0.3);
+
+  const {
+    primaryDemographic = 'sensitive_feature',
+    primaryOutcome = 'outcome',
+    proxyCols = [],
+    approvalRates = [],
+    metrics = {},
+    demographicCols = [],
+  } = dashboardData || {};
+
+  const topFindings = (insights?.keyFindings || []).slice(0, 3).join('\n- ');
+  const topSuggestions = (insights?.suggestions || []).slice(0, 3).join('\n- ');
+  const proxyList = proxyCols.join(', ') || 'zip_code, school';
+
+  const systemContent = `You are a senior ML Fairness Engineer. Generate production-quality Python code to remediate algorithmic bias found in an HR dataset.
+
+REQUIREMENTS:
+- Use pandas, scikit-learn, and fairlearn libraries.
+- Organise code into clearly labelled sections with markdown headers (## Section Name).
+- Each section must have a brief comment explaining WHY it helps fairness.
+- Include exactly 3 code sections:
+  1. Data Cleaning — remove or transform the proxy variables that correlate with protected attributes.
+  2. Bias Mitigation — apply fairlearn's ExponentiatedGradient with DemographicParity constraint.
+  3. Post-hoc Validation — recompute approval rates per group and print a compliance summary.
+- Use realistic column names from the audit data.
+- At the top, add a short markdown summary of what this script does and why.
+- Return ONLY markdown with python code blocks. No JSON, no preamble.`;
+
+  const humanContent = `AUDIT CONTEXT:
+- Primary Demographic Column: "${primaryDemographic}"
+- Primary Outcome Column: "${primaryOutcome}"
+- Detected Proxy Columns (high-risk): ${proxyList}
+- Demographic Parity Score: ${metrics.parity ?? 'N/A'}/100 (EEOC threshold: 80)
+- Fairness Score: ${metrics.fairnessScore ?? 'N/A'}/10
+- Demographic groups & approval rates: ${approvalRates.map(r => `${r.group}: ${r.rate}%`).join(', ')}
+
+TOP FINDINGS:
+- ${topFindings || 'No findings available'}
+
+SUGGESTED ACTIONS:
+- ${topSuggestions || 'No suggestions available'}
+
+Generate the 3-section Python remediation script.`;
+
+  const messages = [
+    { role: "system", content: systemContent },
+    { role: "human", content: humanContent },
   ];
 
   const response = await model.invoke(messages);

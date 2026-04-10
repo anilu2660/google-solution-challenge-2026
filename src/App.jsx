@@ -7,7 +7,10 @@ import SettingsModal from './components/SettingsModal';
 import ParticleBackground from './components/ParticleBackground';
 import ErrorBoundary from './components/ErrorBoundary';
 import Login from './components/Login';
-import { Settings, Sun, Moon, BarChart3 } from 'lucide-react';
+import NotificationsPanel from './components/NotificationsPanel';
+import ToastStack from './components/ToastStack';
+import { useAlerts } from './hooks/useAlerts';
+import { Settings, Sun, Moon, Bell } from 'lucide-react';
 import './index.css';
 
 /* ── Theme toggle hook ───────────────────────────────────────────────────── */
@@ -64,11 +67,18 @@ const EquiLensLogo = ({ size = 36 }) => (
 
 /* ── Main App ────────────────────────────────────────────────────────────── */
 const EquiLensApp = () => {
-  const { data } = useAppContext();
+  const { data, insights, thresholds } = useAppContext();
   const { theme, toggle } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const isDark = theme === 'dark';
+
+  /* ── Alert system ─────────────────────────────────────────────────────── */
+  const {
+    alerts, toasts, unreadCount,
+    dismissToast, markAllRead, markRead, clearAll,
+  } = useAlerts(data, insights, thresholds);
 
   return (
     <div style={{
@@ -87,10 +97,10 @@ const EquiLensApp = () => {
         padding: '0 24px',
         height: 60,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: isDark ? 'rgba(20,20,24,0.9)' : 'rgba(255,255,255,0.95)',
-        backdropFilter: 'blur(12px)',
+        background: isDark ? 'rgba(6,11,24,0.94)' : 'rgba(240,244,255,0.96)',
+        backdropFilter: 'blur(20px) saturate(1.4)',
         borderBottom: '1px solid var(--border)',
-        boxShadow: isDark ? '0 1px 0 rgba(255,255,255,0.04)' : '0 1px 0 rgba(0,0,0,0.06)',
+        boxShadow: isDark ? '0 1px 0 rgba(129,140,248,0.06), 0 4px 24px rgba(0,0,0,0.3)' : '0 1px 0 rgba(99,102,241,0.08)',
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
@@ -98,13 +108,13 @@ const EquiLensApp = () => {
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 42, height: 42, borderRadius: 12,
-            background: isDark ? 'rgba(66,133,244,0.07)' : 'rgba(66,133,244,0.06)',
-            border: '1px solid rgba(66,133,244,0.18)',
-            boxShadow: '0 0 18px rgba(66,133,244,0.15)',
+            background: isDark ? 'rgba(129,140,248,0.1)' : 'rgba(129,140,248,0.08)',
+            border: '1px solid rgba(129,140,248,0.25)',
+            boxShadow: '0 0 24px rgba(129,140,248,0.15)',
             transition: 'transform 0.25s, box-shadow 0.25s',
           }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.07)'; e.currentTarget.style.boxShadow = '0 0 26px rgba(66,133,244,0.3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)';    e.currentTarget.style.boxShadow = '0 0 18px rgba(66,133,244,0.15)'; }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = '0 0 36px rgba(129,140,248,0.3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)';    e.currentTarget.style.boxShadow = '0 0 24px rgba(129,140,248,0.15)'; }}
           >
             <EquiLensLogo size={28} />
           </div>
@@ -114,7 +124,7 @@ const EquiLensApp = () => {
             <span style={{
               fontFamily: "'Space Grotesk', sans-serif",
               fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em',
-              background: 'linear-gradient(90deg, #4285F4 0%, #34A853 55%, #FBBC05 100%)',
+              background: 'linear-gradient(135deg, #818CF8 0%, #3B82F6 50%, #34D399 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
               lineHeight: 1,
@@ -131,11 +141,43 @@ const EquiLensApp = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Live audit badge */}
           {data && (
-            <div className="badge" style={{ background: 'rgba(52,168,83,0.12)', border: '1px solid rgba(52,168,83,0.25)', color: '#34A853' }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34A853', animation: 'pulse 1.5s infinite' }} />
+            <div className="badge" style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)', color: '#34D399', boxShadow: '0 0 12px rgba(52,211,153,0.1)' }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#34D399', animation: 'pulse 1.5s infinite', boxShadow: '0 0 6px rgba(52,211,153,0.4)' }} />
               Live Audit
             </div>
           )}
+
+          {/* ── Bell / Notifications ──────────────────────────────── */}
+          <button
+            id="notifications-btn"
+            onClick={() => { setIsNotifOpen(v => !v); if (unreadCount > 0) markAllRead(); }}
+            title={unreadCount > 0 ? `${unreadCount} unread alert${unreadCount > 1 ? 's' : ''}` : 'Notifications'}
+            style={{
+              position: 'relative',
+              padding: 8, border: '1px solid var(--border)', borderRadius: 8,
+              background: unreadCount > 0 ? 'rgba(251,113,133,0.1)' : 'var(--bg-card-2)',
+              color: unreadCount > 0 ? '#FB7185' : 'var(--text-2)',
+              cursor: 'pointer', display: 'flex', transition: 'all 0.2s',
+            }}
+          >
+            <Bell size={16} style={{ animation: unreadCount > 0 ? 'bellRing 0.5s ease 0.2s 2' : 'none' }} />
+
+            {/* Unread badge */}
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -5, right: -5,
+                minWidth: 18, height: 18, borderRadius: 99,
+                background: '#FB7185', color: '#fff',
+                fontSize: 9, fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif",
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 4px', border: '2px solid var(--bg-page)',
+                animation: 'pulse 1.5s infinite',
+                lineHeight: 1,
+              }}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
 
           {/* Theme toggle */}
           <button
@@ -182,29 +224,28 @@ const EquiLensApp = () => {
             </ErrorBoundary>
           </div>
         ) : (
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'row', padding: '16px',
-            gap: 16, height: 'calc(100vh - 60px)', overflow: 'hidden',
-          }}>
-            {/* Left: dashboard */}
-            <div style={{ flex: 1, overflowY: 'auto' }} className="no-scrollbar">
-              <ErrorBoundary name="Dashboard">
-                <Dashboard theme={theme} />
-              </ErrorBoundary>
-            </div>
-            {/* Right: AI copilot */}
-            <div style={{ width: 380, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-              <ErrorBoundary name="AICopilot">
-                <AICopilot />
-              </ErrorBoundary>
-            </div>
-          </div>
+          <DashboardLayout />
         )}
       </main>
 
+      {/* ── Settings Modal ──────────────────────────────────────────────────── */}
       <ErrorBoundary name="SettingsModal">
         <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       </ErrorBoundary>
+
+      {/* ── Notifications Panel (slide-in drawer) ───────────────────────────── */}
+      <NotificationsPanel
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+        alerts={alerts}
+        unreadCount={unreadCount}
+        onMarkAllRead={markAllRead}
+        onMarkRead={markRead}
+        onClearAll={clearAll}
+      />
+
+      {/* ── Toast Stack (bottom-right auto-dismiss) ──────────────────────────── */}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 };
@@ -216,3 +257,75 @@ export default function App() {
     </AppProvider>
   );
 }
+
+/* ── Split Layout Component ─────────────────────────────────────────────────── */
+const DashboardLayout = () => {
+  const { theme } = useTheme();
+  const [copilotWidth, setCopilotWidth] = useState(400);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e) => {
+      // Calculate new width based on mouse position
+      const newWidth = window.innerWidth - e.clientX - 16;
+      if (newWidth >= 300 && newWidth <= 800) {
+        setCopilotWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'row', padding: '16px',
+      height: 'calc(100vh - 60px)', overflow: 'hidden', position: 'relative'
+    }}>
+      {/* Left: dashboard */}
+      <div style={{ flex: 1, overflowY: 'auto', paddingRight: '16px' }} className="no-scrollbar">
+        <ErrorBoundary name="Dashboard">
+          <Dashboard theme={theme} />
+        </ErrorBoundary>
+      </div>
+
+      {/* Drag Resizer Handle */}
+      <div 
+        onMouseDown={() => setIsDragging(true)}
+        style={{
+          width: '6px',
+          cursor: 'col-resize',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: isDragging ? 'rgba(129,140,248,0.4)' : 'transparent',
+          transition: 'background 0.2s',
+          borderRadius: '4px',
+          zIndex: 20
+        }}
+        onMouseOver={e => { if (!isDragging) e.currentTarget.style.background = 'rgba(129,140,248,0.2)'; }}
+        onMouseOut={e => { if (!isDragging) e.currentTarget.style.background = 'transparent'; }}
+      >
+        <div style={{ width: 2, height: 30, background: 'rgba(129,140,248,0.5)', borderRadius: 2 }} />
+      </div>
+
+      {/* Right: AI copilot */}
+      <div style={{ width: copilotWidth, flexShrink: 0, display: 'flex', flexDirection: 'column', marginLeft: '10px' }}>
+        <ErrorBoundary name="AICopilot">
+          <AICopilot theme={theme} />
+        </ErrorBoundary>
+      </div>
+      
+      {/* Invisible overlay to prevent iframe/text selection issues while dragging */}
+      {isDragging && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, cursor: 'col-resize' }} />
+      )}
+    </div>
+  );
+};
