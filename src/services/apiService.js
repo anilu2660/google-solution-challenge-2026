@@ -46,14 +46,13 @@ export const performFullAudit = async (apiKey, computedStats, onStream = null) =
   } = computedStats;
 
   // ── Build the system message as a plain string ─────────────────────────
-  const systemMessage = `You are EquiLens, a world-class AI Ethics and Fairness Auditor specialising in HR algorithmic bias.
-You have received PRE-COMPUTED statistical bias metrics. Do NOT recalculate them — accept them as ground truth and focus on expert interpretation, root-cause analysis, legal implications, and actionable remediation.
+  const systemMessage = `You are EquiLens AI, an expert, objective auditor specializing in algorithmic fairness, HR compliance, and demographic parity. 
+You will be provided with statistical bias metrics pre-computed from an HR dataset.
+Your task is to analyze these statistics and generate a highly professional, narrative bias audit report.
 
-INSTRUCTIONS:
-- Return ONLY valid JSON (no markdown fences, no preamble, no trailing text).
-- Be specific — reference actual column names, groups, and percentages from the data.
-- All numbers must be consistent with the provided pre-computed metrics.
-- The JSON must exactly follow the structure below.
+CRITICAL INSTRUCTION: The JSON format below contains EXAMPLE VALUES ONLY. You MUST NOT copy these example values. You MUST generate custom, highly specific analysis, root causes, and numerical trends based ENTIRELY on the provided data context.
+
+Respond ONLY with a raw, valid JSON object in the exact structure below. Do not include markdown codeblocks or any conversational text.
 
 JSON STRUCTURE:
 {
@@ -91,15 +90,30 @@ JSON STRUCTURE:
       { "x": "ColA", "y": "ColB", "value": 0.82, "riskLabel": "CRITICAL" },
       { "x": "ColA", "y": "ColC", "value": 0.55, "riskLabel": "MEDIUM" }
     ]
-  }
+  },
+  "rootCauseFeatureImportance": [
+    { "feature": "ActualColumnName1", "importance": 0.85, "reason": "Explanation of bias" },
+    { "feature": "ActualColumnName2", "importance": 0.60, "reason": "Explanation of bias" }
+  ],
+  "historicalTrend": [
+    { "period": "Q1 2024", "parityScore": 55, "fairnessScore": 4.1 },
+    { "period": "Q2 2024", "parityScore": 58, "fairnessScore": 4.5 }
+  ]
 }
 
+RULES FOR rootCauseFeatureImportance:
+- MUST NOT BE MOCK DATA. You must look at the provided features and heatmap to deduce real, logical scenarios for why specific features are driving bias.
+- Must have exact column names from the proxy or features list. Provide up to 5 top features driving bias. Importance is a score from 0.0 to 1.0. 
+
+RULES FOR historicalTrend:
+- MUST NOT BE THE EXAMPLES PROVIDED. Make up a realistic 4-quarter past trend building up to the CURRENT parityScore and fairnessScore for Q4 based on how difficult the bias is to resolve.
+
 RULES FOR aiMetrics:
-- parityScore: integer 0–100. EEOC 4/5ths rule: (min_group_rate / max_group_rate) * 100. Must match your approvalRates.
-- fairnessScore: float 0–10. Weighted composite of parity, proxy exposure, data integrity, and transparency. Be honest.
+- parityScore: integer 0-100. EEOC 4/5ths rule. MUST be derived from the provided parity.
+- fairnessScore: float 0-10. MUST be derived from the provided metrics.
 - approvalRates: array with one entry per detected demographic group. Use the pre-computed rates as a baseline but adjust with AI judgment if you detect inconsistencies. riskLevel = CRITICAL (<50%), HIGH (50-70%), MEDIUM (70-80%), LOW (>80%).
-- fingerprint: exactly 6 values [Parity, Proxy-Free, Integrity, Consistency, Coverage, Transparency], each 0–100. Benchmark is 80.
-- heatmap: keep same columns as pre-computed but use your AI judgment to assign more nuanced values 0–1. Include ALL pairs from the pre-computed heatmap.`;
+- fingerprint: exactly 6 values, each 0-100.
+- heatmap: keep same columns as pre-computed but use your AI judgment to assign more nuanced values 0-1. Include ALL pairs from the pre-computed heatmap.`;
 
 
   // ── Build the human message with injected stats ────────────────────────

@@ -3,7 +3,7 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   ArcElement, RadialLinearScale, PointElement, LineElement, Tooltip, Legend,
 } from 'chart.js';
-import { Bar, Doughnut, Radar } from 'react-chartjs-2';
+import { Bar, Doughnut, Radar, Line } from 'react-chartjs-2';
 import { useAppContext } from '../context/AppContext';
 import { SlidersHorizontal } from 'lucide-react';
 import {
@@ -206,6 +206,7 @@ const FONT = { family: 'Inter, sans-serif' };
 const Dashboard = ({ theme }) => {
   const { data, insights, auditError, streamingText, thresholds } = useAppContext();
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedCohort, setSelectedCohort] = useState(null);
   const dashboardRef = useRef(null);
   const isDark = theme !== 'light';
   const gridColor  = isDark ? 'rgba(99,128,255,0.07)' : 'rgba(99,102,241,0.08)';
@@ -511,15 +512,16 @@ const Dashboard = ({ theme }) => {
               <motion.div key={r.group}
                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.35 + i * 0.07 }}
+                onClick={() => setSelectedCohort(selectedCohort === r.group ? null : r.group)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 14,
                   padding: '10px 14px', borderRadius: 12,
-                  background: 'rgba(99,128,255,0.02)',
-                  border: '1px solid transparent',
+                  background: selectedCohort === r.group ? `${CHART_COLORS[i % 5]}15` : 'rgba(99,128,255,0.02)',
+                  border: `1px solid ${selectedCohort === r.group ? CHART_COLORS[i % 5] : 'transparent'}`,
                   transition: 'all 0.25s',
-                  cursor: 'default',
+                  cursor: 'pointer',
                 }}
-                whileHover={{ backgroundColor: 'rgba(99,128,255,0.06)', borderColor: 'rgba(99,128,255,0.12)' }}
+                whileHover={{ backgroundColor: selectedCohort === r.group ? `${CHART_COLORS[i % 5]}25` : 'rgba(99,128,255,0.06)', borderColor: selectedCohort === r.group ? CHART_COLORS[i % 5] : 'rgba(99,128,255,0.12)' }}
               >
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: CHART_COLORS[i % 5], flexShrink: 0, boxShadow: `0 0 8px ${CHART_COLORS[i % 5]}40` }} />
                 <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 600, minWidth: 110 }}>{r.group}</span>
@@ -549,9 +551,45 @@ const Dashboard = ({ theme }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 14 }}>
             <Cpu size={11} style={{ color: P.indigo }} />
             <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, fontStyle: 'italic' }}>
-              Rates & risk labels computed by Gemini from your CSV data
+              Rates & risk labels computed by Gemini from your CSV data. Click a row to view raw data.
             </span>
           </div>
+
+          {/* Interactive Cohort Drill-Down Table */}
+          {selectedCohort && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="g-card" style={{ marginTop: 16, padding: '16px 20px', borderLeft: `4px solid ${P.sapphire}`, background: 'var(--bg-card-2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>Raw Data: {selectedCohort}</h4>
+                <span style={{ fontSize: 10, color: 'var(--text-3)' }}>Showing top 5 examples</span>
+              </div>
+              <div style={{ width: '100%', overflowX: 'auto', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, textAlign: 'left' }}>
+                  <thead style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+                    <tr>
+                      {data.rawHeaders.map((h, i) => (
+                        <th key={i} style={{ padding: '8px 12px', color: 'var(--text-2)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const demoIdx = data.rawHeaders.indexOf(data.primaryDemographic);
+                      if (demoIdx === -1) return null;
+                      const demoRows = data.rawRows.filter(row => row[demoIdx] === selectedCohort).slice(0, 5);
+                      return demoRows.map((row, rIdx) => (
+                        <tr key={rIdx} style={{ borderBottom: '1px solid var(--border)' }}>
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} style={{ padding: '8px 12px', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{cell}</td>
+                          ))}
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+
         </div>
       </motion.div>
 
@@ -658,6 +696,93 @@ const Dashboard = ({ theme }) => {
         </motion.div>
       </div>
 
+      {/* ── Root-Cause Explainer & Historical Trend ──────────────────── */}
+      {(insights?.featureImportance?.length > 0 || insights?.historicalTrend?.length > 0) && (
+        <div className="dashboard-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22 }}>
+          
+          {/* Root-Cause Explainer */}
+          {insights.featureImportance?.length > 0 && (
+            <motion.div className="g-card" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55, duration: 0.6 }}
+              style={{ padding: 28 }}
+            >
+              <SectionHead icon={Lightbulb} label="Root-Cause Explainer" color={P.amber}
+                badge="AI Feature Importance" badgeColor={P.amber}
+                description="Top factors identified by the LLM driving algorithmic bias" />
+              <div style={{ height: 220 }}>
+                <Bar 
+                  data={{
+                    labels: insights.featureImportance.map(f => f.feature),
+                    datasets: [{
+                      label: 'Bias Influence Score',
+                      data: insights.featureImportance.map(f => f.importance * 100),
+                      backgroundColor: P.amber,
+                      borderRadius: 6,
+                    }]
+                  }} 
+                  options={{
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                      x: { max: 100, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } },
+                      y: { grid: { display: false }, ticks: { color: labelColor, font: { weight: '600', size: 11 } } }
+                    }
+                  }} 
+                />
+              </div>
+              <div style={{ marginTop: 14 }}>
+                {insights.featureImportance.slice(0,2).map((f, i) => (
+                  <p key={i} style={{ fontSize: 11, color: 'var(--text-3)', margin: '4px 0', lineHeight: 1.5 }}>
+                    <strong style={{ color: P.amber }}>{f.feature}:</strong> {f.reason}
+                  </p>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Historical Trend */}
+          {insights.historicalTrend?.length > 0 && (
+            <motion.div className="g-card" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 0.6 }}
+              style={{ padding: 28 }}
+            >
+              <SectionHead icon={TrendingUp} label="Historical Trend" color={P.sapphire}
+                badge="Time-Series Progress" badgeColor={P.emerald}
+                description="Parity and Fairness Score progression over time" />
+              <div style={{ height: 220 }}>
+                <Line 
+                  data={{
+                    labels: insights.historicalTrend.map(t => t.period),
+                    datasets: [
+                      {
+                        label: 'Parity Score (0-100)',
+                        data: insights.historicalTrend.map(t => t.parityScore),
+                        borderColor: P.emerald, backgroundColor: `${P.emeraldGlow}0.2)`,
+                        borderWidth: 2, tension: 0.3, pointBackgroundColor: P.emerald,
+                      },
+                      {
+                        label: 'Fairness Score (x10)',
+                        data: insights.historicalTrend.map(t => t.fairnessScore * 10),
+                        borderColor: P.sapphire, backgroundColor: `${P.sapphireGlow}0.2)`,
+                        borderWidth: 2, tension: 0.3, pointBackgroundColor: P.sapphire,
+                      }
+                    ]
+                  }} 
+                  options={{
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: true, position: 'bottom', labels: { color: tickColor, font: { size: 10 }, padding: 14 } }
+                    },
+                    scales: { 
+                      y: { max: 100, min: 0, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } },
+                      x: { grid: { display: false }, ticks: { color: labelColor, font: { weight: '600', size: 11 } } }
+                    }
+                  }} 
+                />
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
+
       {/* ── CSV Preview ──────────────────────────────────────────────── */}
       {data.csvPreview && (
         <motion.div className="g-card" initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.6 }}
@@ -674,13 +799,13 @@ const Dashboard = ({ theme }) => {
             </div>
           </div>
 
-          <div style={{ width: '100%', overflowX: 'auto', borderRadius: 14, border: '1px solid var(--border)' }} className="no-scrollbar">
+          <div style={{ width: '100%', overflowX: 'auto', borderRadius: 14, border: '1px solid var(--border)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
               <thead style={{ background: 'var(--bg-card-2)', borderBottom: '2px solid var(--border)' }}>
                 <tr>
                   <th style={{ padding: '14px 16px', color: P.indigo, fontWeight: 700, textTransform: 'uppercase', width: 40, fontSize: 10, letterSpacing: '0.1em' }}>#</th>
                   {data.csvPreview.headers.map((h, i) => (
-                    <th key={i} style={{ padding: '14px 16px', color: 'var(--text-1)', fontWeight: 700, fontSize: 11 }}>{h}</th>
+                    <th key={i} style={{ padding: '14px 16px', color: 'var(--text-1)', fontWeight: 700, fontSize: 11, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -696,7 +821,7 @@ const Dashboard = ({ theme }) => {
                   >
                     <td style={{ padding: '12px 16px', color: P.indigo, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", fontSize: 11 }}>{rIdx + 1}</td>
                     {row.map((cell, cIdx) => (
-                      <td key={cIdx} style={{ padding: '12px 16px' }}>{cell}</td>
+                      <td key={cIdx} style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{cell}</td>
                     ))}
                   </tr>
                 ))}
@@ -725,7 +850,7 @@ const Dashboard = ({ theme }) => {
                     >
                       <td style={{ padding: '12px 16px', color: P.indigo, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", fontSize: 11 }}>{actualIdx}</td>
                       {row.map((cell, cIdx) => (
-                        <td key={cIdx} style={{ padding: '12px 16px' }}>{cell}</td>
+                        <td key={cIdx} style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>{cell}</td>
                       ))}
                     </tr>
                   );

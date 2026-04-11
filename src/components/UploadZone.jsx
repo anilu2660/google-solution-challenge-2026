@@ -21,12 +21,12 @@ const P = {
 
 /* ── Analysis step definitions ───────────────────────────────────────────── */
 const PHASES = [
-  { id: 'parsing',    label: 'Parsing CSV structure…',                icon: FileText,    color: P.sapphire },
-  { id: 'stats',      label: 'Computing statistical metrics…',        icon: BarChart3,   color: P.indigo },
-  { id: 'correlate',  label: 'Detecting proxy correlations…',         icon: Zap,         color: P.amber },
-  { id: 'parity',     label: 'Calculating demographic parity…',       icon: Shield,      color: P.emerald },
-  { id: 'llm',        label: 'Gemini 3.1 Pro deep analysis…',         icon: Cpu,         color: P.violet },
-  { id: 'done',       label: 'Audit complete — building dashboard…',  icon: CheckCircle2, color: P.emerald },
+  { id: 'parsing', label: 'Parsing CSV structure…', icon: FileText, color: P.sapphire },
+  { id: 'stats', label: 'Computing statistical metrics…', icon: BarChart3, color: P.indigo },
+  { id: 'correlate', label: 'Detecting proxy correlations…', icon: Zap, color: P.amber },
+  { id: 'parity', label: 'Calculating demographic parity…', icon: Shield, color: P.emerald },
+  { id: 'llm', label: 'Gemini 3.1 Pro deep analysis…', icon: Cpu, color: P.violet },
+  { id: 'done', label: 'Audit complete — building dashboard…', icon: CheckCircle2, color: P.emerald },
 ];
 
 /* ── Rotating hero words ────────────────────────────────────────────────── */
@@ -101,15 +101,16 @@ const UploadZone = () => {
     setData, setInsights, setIsAnalyzing, isAnalyzing,
     apiKey, setAuditError, auditError,
     setStreamingText, setAnalysisPhase,
+    addAuditToHistory,
   } = useAppContext();
 
-  const [isHovered,  setIsHovered]  = useState(false);
-  const [phase,      setPhase]       = useState(0);
-  const [fileName,   setFileName]    = useState('');
-  const [statsReady, setStatsReady]  = useState(null);
-  const [llmRaw,     setLlmRaw]      = useState('');
-  const [llmError,   setLlmError]    = useState(null);
-  const [rowCount,   setRowCount]    = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [phase, setPhase] = useState(0);
+  const [fileName, setFileName] = useState('');
+  const [statsReady, setStatsReady] = useState(null);
+  const [llmRaw, setLlmRaw] = useState('');
+  const [llmError, setLlmError] = useState(null);
+  const [rowCount, setRowCount] = useState(0);
   const fileInputRef = useRef(null);
 
   const advancePhase = (idx) => {
@@ -117,15 +118,34 @@ const UploadZone = () => {
     setAnalysisPhase(PHASES[idx]?.id || '');
   };
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsHovered(false);
+    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+    const droppedFiles = Array.from(e.dataTransfer.files).slice(0, 3);
+    processFiles(droppedFiles);
+  };
+
+  const handleFileSelect = (e) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const selectedFiles = Array.from(e.target.files).slice(0, 3);
+    processFiles(selectedFiles);
+    e.target.value = '';
+  };
+
   /* ── Core processing pipeline ─────────────────────────────────────────── */
-  const processFile = async (file) => {
-    if (!file) return;
-    if (!file.name.match(/\.(csv|json)$/i)) {
-      setLlmError('Only .csv and .json files are supported.');
-      return;
+  const processFiles = async (files) => {
+    if (!files || files.length === 0) return;
+
+    for (let f of files) {
+      if (!f.name.match(/\.(csv|json)$/i)) {
+        setLlmError('Only .csv and .json files are supported.');
+        return;
+      }
     }
 
-    setFileName(file.name);
+    const combinedName = files.map(f => f.name).join(', ');
+    setFileName(combinedName);
     setIsAnalyzing(true);
     setLlmError(null);
     setAuditError(null);
@@ -133,12 +153,18 @@ const UploadZone = () => {
     setStatsReady(null);
     advancePhase(0);
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const text = reader.result || '';
+    let allHeaders = [];
+    let combinedRows = [];
 
-      let headers = [], allRows = [];
-      try {
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result || '');
+          reader.onerror = reject;
+          reader.readAsText(files[i]);
+        });
+
         const rawLines = text.split('\n').filter(l => l.trim());
         const parseLine = (line) => {
           const result = [];
@@ -152,167 +178,191 @@ const UploadZone = () => {
           result.push(current.trim());
           return result;
         };
-        headers  = rawLines.length > 0 ? parseLine(rawLines[0]) : [];
-        allRows  = rawLines.slice(1).map(parseLine).filter(r => r.some(c => c));
-        setRowCount(allRows.length);
-      } catch (parseErr) {
-        setLlmError(`CSV parse error: ${parseErr.message}`);
-        setIsAnalyzing(false);
-        return;
+        const headers = rawLines.length > 0 ? parseLine(rawLines[0]) : [];
+        if (i === 0) allHeaders = headers;
+
+        const rows = rawLines.slice(1).map(parseLine).filter(r => r.some(c => c));
+        combinedRows.push(...rows);
       }
+      setRowCount(combinedRows.length);
+    } catch (parseErr) {
+      setLlmError(`CSV parse error: ${parseErr.message}`);
+      setIsAnalyzing(false);
+      return;
+    }
 
-      await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 300));
 
-      advancePhase(1);
-      await new Promise(r => setTimeout(r, 200));
+    advancePhase(1);
+    await new Promise(r => setTimeout(r, 200));
 
-      let computed;
-      try {
-        computed = analyzeCSV(headers, allRows);
-        setStatsReady(computed);
-      } catch (statErr) {
-        setLlmError(`Statistical analysis error: ${statErr.message}`);
-        setIsAnalyzing(false);
-        return;
-      }
+    let computed;
+    try {
+      computed = analyzeCSV(allHeaders, combinedRows);
+      setStatsReady(computed);
+    } catch (statErr) {
+      setLlmError(`Statistical analysis error: ${statErr.message}`);
+      setIsAnalyzing(false);
+      return;
+    }
 
-      advancePhase(2);
-      await new Promise(r => setTimeout(r, 250));
-      advancePhase(3);
-      await new Promise(r => setTimeout(r, 250));
+    advancePhase(2);
+    await new Promise(r => setTimeout(r, 250));
+    advancePhase(3);
+    await new Promise(r => setTimeout(r, 250));
 
-      const head = allRows.slice(0, 5);
-      const tail = allRows.length > 10 ? allRows.slice(-5) : [];
+    const head = combinedRows.slice(0, 5);
+    const tail = combinedRows.length > 10 ? combinedRows.slice(-5) : [];
 
-      const baseData = {
-        fileName: file.name,
-        rowCount: allRows.length,
-        columnCount: headers.length,
-        metrics: computed.metrics,
-        approvalRates: computed.approvalRates,
-        heatmap: computed.heatmap,
-        fingerprint: computed.fingerprint,
-        csvPreview: { headers, head, tail, totalRows: allRows.length },
-        rawHeaders: headers,
-        rawRows: allRows,
-        demographicCols: computed.demographicCols,
-        outcomeCols: computed.outcomeCols,
-        proxyCols: computed.proxyCols,
-        primaryDemographic: computed.primaryDemographic,
-        primaryOutcome: computed.primaryOutcome,
-        isPartialResult: true,
+    const baseData = {
+      fileName: combinedName,
+      rowCount: combinedRows.length,
+      columnCount: allHeaders.length,
+      metrics: computed.metrics,
+      approvalRates: computed.approvalRates,
+      heatmap: computed.heatmap,
+      fingerprint: computed.fingerprint,
+      csvPreview: { headers: allHeaders, head, tail, totalRows: combinedRows.length },
+      rawHeaders: allHeaders,
+      rawRows: combinedRows,
+      demographicCols: computed.demographicCols,
+      outcomeCols: computed.outcomeCols,
+      proxyCols: computed.proxyCols,
+      primaryDemographic: computed.primaryDemographic,
+      primaryOutcome: computed.primaryOutcome,
+      isPartialResult: true,
+    };
+
+    advancePhase(4);
+
+    const activeKey = apiKey || import.meta.env.VITE_OPENAI_API_KEY;
+    if (!activeKey) {
+      setData(baseData);
+      setInsights({
+        summary: `Statistical analysis complete. ${computed.approvalRates.length} demographic groups detected across ${combinedRows.length} records. Demographic Parity Score: ${computed.metrics.parity}/100. Add an OpenAI API Key in Settings for AI-generated insights and recommendations.`,
+        riskLevel: computed.metrics.parity < 65 ? 'CRITICAL' : computed.metrics.parity < 80 ? 'HIGH' : computed.metrics.parity < 90 ? 'MEDIUM' : 'LOW',
+        keyFindings: [
+          `Demographic Parity Score is ${computed.metrics.parity}/100 (EEOC threshold: 80/100).`,
+          `${computed.approvalRates.length} groups detected. Highest: ${computed.approvalRates[0]?.group} at ${computed.approvalRates[0]?.rate}%.`,
+          computed.approvalRates.length > 1
+            ? `Lowest group: ${computed.approvalRates[computed.approvalRates.length - 1]?.group} at ${computed.approvalRates[computed.approvalRates.length - 1]?.rate}%.`
+            : 'Only one group detected — could not compute disparity gap.',
+          `${computed.proxyCols.length} proxy variable columns identified: ${computed.proxyCols.join(', ') || 'none'}.`,
+          `Fairness Score: ${computed.metrics.fairnessScore}/10. Add API key for detailed AI-powered narrative.`,
+        ],
+        predictions: [
+          'Connect OpenAI API key for AI-generated predictions tailored to your dataset.',
+          'Statistical analysis shows potential bias — full LLM audit recommended.',
+        ],
+        suggestions: [
+          'Add your OpenAI API Key via the Settings (⚙) button to unlock full AI analysis.',
+          `Review the ${computed.primaryDemographic || 'demographic'} column for disparate impact.`,
+          computed.primaryOutcome
+            ? `Audit ${computed.primaryOutcome} decisions for demographic fairness.`
+            : 'Identify outcome columns (Hired, Approved, etc.) for full parity analysis.',
+        ],
+      });
+      advancePhase(5);
+      await new Promise(r => setTimeout(r, 400));
+      setIsAnalyzing(false);
+      return;
+    }
+
+    try {
+      let streamBuffer = '';
+      const llmResult = await performFullAudit(activeKey, computed, (chunk) => {
+        streamBuffer = chunk;
+        setLlmRaw(chunk);
+        setStreamingText(chunk);
+      });
+
+      const aiM = llmResult.aiMetrics || {};
+      const aiApprovalRates = Array.isArray(aiM.approvalRates) && aiM.approvalRates.length > 0
+        ? aiM.approvalRates : computed.approvalRates;
+      const aiFingerprint = Array.isArray(aiM.fingerprint) && aiM.fingerprint.length === 6
+        ? aiM.fingerprint : computed.fingerprint;
+      const aiHeatmap = Array.isArray(aiM.heatmap) && aiM.heatmap.length > 0
+        ? aiM.heatmap : computed.heatmap;
+      const aiParity = Number.isFinite(aiM.parityScore) ? aiM.parityScore : computed.metrics.parity;
+      const aiFairness = Number.isFinite(aiM.fairnessScore) ? aiM.fairnessScore : computed.metrics.fairnessScore;
+      const aiTransparency = Number.isFinite(llmResult.transparencyScore) ? llmResult.transparencyScore : aiFingerprint[5];
+
+      const finalData = {
+        ...baseData,
+        isPartialResult: false,
+        approvalRates: aiApprovalRates,
+        fingerprint: aiFingerprint,
+        heatmap: aiHeatmap,
+        metrics: { ...computed.metrics, parity: aiParity, fairnessScore: aiFairness },
       };
 
-      advancePhase(4);
+      const finalInsights = {
+        summary: llmResult.summary || 'Analysis complete.',
+        riskLevel: llmResult.riskLevel || 'HIGH',
+        keyFindings: llmResult.keyFindings || [],
+        predictions: llmResult.predictions || [],
+        suggestions: llmResult.suggestions || [],
+        transparency: aiTransparency,
+        featureImportance: llmResult.rootCauseFeatureImportance || [],
+        historicalTrend: llmResult.historicalTrend || [],
+      };
 
-      const activeKey = apiKey || import.meta.env.VITE_OPENAI_API_KEY;
-      if (!activeKey) {
-        setData(baseData);
-        setInsights({
-          summary: `Statistical analysis complete. ${computed.approvalRates.length} demographic groups detected across ${allRows.length} records. Demographic Parity Score: ${computed.metrics.parity}/100. Add an OpenAI API Key in Settings for AI-generated insights and recommendations.`,
-          riskLevel: computed.metrics.parity < 65 ? 'CRITICAL' : computed.metrics.parity < 80 ? 'HIGH' : computed.metrics.parity < 90 ? 'MEDIUM' : 'LOW',
-          keyFindings: [
-            `Demographic Parity Score is ${computed.metrics.parity}/100 (EEOC threshold: 80/100).`,
-            `${computed.approvalRates.length} groups detected. Highest: ${computed.approvalRates[0]?.group} at ${computed.approvalRates[0]?.rate}%.`,
-            computed.approvalRates.length > 1
-              ? `Lowest group: ${computed.approvalRates[computed.approvalRates.length-1]?.group} at ${computed.approvalRates[computed.approvalRates.length-1]?.rate}%.`
-              : 'Only one group detected — could not compute disparity gap.',
-            `${computed.proxyCols.length} proxy variable columns identified: ${computed.proxyCols.join(', ') || 'none'}.`,
-            `Fairness Score: ${computed.metrics.fairnessScore}/10. Add API key for detailed AI-powered narrative.`,
-          ],
-          predictions: [
-            'Connect OpenAI API key for AI-generated predictions tailored to your dataset.',
-            'Statistical analysis shows potential bias — full LLM audit recommended.',
-          ],
-          suggestions: [
-            'Add your OpenAI API Key via the Settings (⚙) button to unlock full AI analysis.',
-            `Review the ${computed.primaryDemographic || 'demographic'} column for disparate impact.`,
-            computed.primaryOutcome
-              ? `Audit ${computed.primaryOutcome} decisions for demographic fairness.`
-              : 'Identify outcome columns (Hired, Approved, etc.) for full parity analysis.',
-          ],
-        });
-        advancePhase(5);
-        await new Promise(r => setTimeout(r, 400));
-        setIsAnalyzing(false);
-        return;
+      if (Number.isFinite(aiTransparency)) {
+        finalData.fingerprint = [...aiFingerprint];
+        finalData.fingerprint[5] = Math.min(100, Math.max(0, aiTransparency));
       }
 
-      try {
-        let streamBuffer = '';
-        const llmResult = await performFullAudit(activeKey, computed, (chunk) => {
-          streamBuffer = chunk;
-          setLlmRaw(chunk);
-          setStreamingText(chunk);
-        });
+      advancePhase(5);
+      await new Promise(r => setTimeout(r, 300));
+      setData(finalData);
+      setInsights(finalInsights);
+      setStreamingText('');
 
-        const aiM = llmResult.aiMetrics || {};
-        const aiApprovalRates = Array.isArray(aiM.approvalRates) && aiM.approvalRates.length > 0
-          ? aiM.approvalRates : computed.approvalRates;
-        const aiFingerprint = Array.isArray(aiM.fingerprint) && aiM.fingerprint.length === 6
-          ? aiM.fingerprint : computed.fingerprint;
-        const aiHeatmap = Array.isArray(aiM.heatmap) && aiM.heatmap.length > 0
-          ? aiM.heatmap : computed.heatmap;
-        const aiParity       = Number.isFinite(aiM.parityScore)   ? aiM.parityScore   : computed.metrics.parity;
-        const aiFairness     = Number.isFinite(aiM.fairnessScore)  ? aiM.fairnessScore : computed.metrics.fairnessScore;
-        const aiTransparency = Number.isFinite(llmResult.transparencyScore) ? llmResult.transparencyScore : aiFingerprint[5];
+      addAuditToHistory({
+        date: new Date().toISOString(),
+        fileName: finalData.fileName,
+        parity: aiParity,
+        fairnessScore: aiFairness,
+        riskLevel: finalInsights.riskLevel,
+        summary: finalInsights.summary,
+        keyFindings: finalInsights.keyFindings,
+        suggestions: finalInsights.suggestions,
+      });
 
-        const finalData = {
-          ...baseData,
-          isPartialResult: false,
-          approvalRates: aiApprovalRates,
-          fingerprint:   aiFingerprint,
-          heatmap:       aiHeatmap,
-          metrics: { ...computed.metrics, parity: aiParity, fairnessScore: aiFairness },
-        };
+    } catch (llmErr) {
+      console.error('LLM audit failed:', llmErr);
+      setLlmError(`AI narrative failed: ${llmErr.message}`);
+      setAuditError(llmErr.message);
+      setData({ ...baseData, isPartialResult: false });
+      const fallbackInsights = {
+        summary: `Statistical analysis complete with ${combinedRows.length} rows. AI narrative unavailable: ${llmErr.message.slice(0, 120)}`,
+        riskLevel: computed.metrics.parity < 65 ? 'CRITICAL' : computed.metrics.parity < 80 ? 'HIGH' : 'MEDIUM',
+        keyFindings: [
+          `Demographic Parity Score: ${computed.metrics.parity}/100 (EEOC threshold: 80).`,
+          `Highest approval group: ${computed.approvalRates[0]?.group ?? 'N/A'} at ${computed.approvalRates[0]?.rate ?? 0}%.`,
+          `Lowest approval group: ${computed.approvalRates[computed.approvalRates.length - 1]?.group ?? 'N/A'} at ${computed.approvalRates[computed.approvalRates.length - 1]?.rate ?? 0}%.`,
+          `Disparity gap: ${(Math.max(...computed.approvalRates.map(r => r.rate)) - Math.min(...computed.approvalRates.map(r => r.rate)))} percentage points.`,
+          `Proxy variables detected: ${computed.proxyCols.join(', ') || 'none'}.`,
+        ],
+        predictions: ['Verify API key and retry for AI-powered predictions.'],
+        suggestions: ['Check your OpenAI API key in Settings and re-upload the file for full AI analysis.'],
+      };
+      setInsights(fallbackInsights);
 
-        const finalInsights = {
-          summary:      llmResult.summary      || 'Analysis complete.',
-          riskLevel:    llmResult.riskLevel     || 'HIGH',
-          keyFindings:  llmResult.keyFindings   || [],
-          predictions:  llmResult.predictions   || [],
-          suggestions:  llmResult.suggestions   || [],
-          transparency: aiTransparency,
-        };
-
-        if (Number.isFinite(aiTransparency)) {
-          finalData.fingerprint = [...aiFingerprint];
-          finalData.fingerprint[5] = Math.min(100, Math.max(0, aiTransparency));
-        }
-
-        advancePhase(5);
-        await new Promise(r => setTimeout(r, 300));
-        setData(finalData);
-        setInsights(finalInsights);
-        setStreamingText('');
-
-      } catch (llmErr) {
-        console.error('LLM audit failed:', llmErr);
-        setLlmError(`AI narrative failed: ${llmErr.message}`);
-        setAuditError(llmErr.message);
-        setData({ ...baseData, isPartialResult: false });
-        setInsights({
-          summary: `Statistical analysis complete with ${allRows.length} rows. AI narrative unavailable: ${llmErr.message.slice(0, 120)}`,
-          riskLevel: computed.metrics.parity < 65 ? 'CRITICAL' : computed.metrics.parity < 80 ? 'HIGH' : 'MEDIUM',
-          keyFindings: [
-            `Demographic Parity Score: ${computed.metrics.parity}/100 (EEOC threshold: 80).`,
-            `Highest approval group: ${computed.approvalRates[0]?.group ?? 'N/A'} at ${computed.approvalRates[0]?.rate ?? 0}%.`,
-            `Lowest approval group: ${computed.approvalRates[computed.approvalRates.length-1]?.group ?? 'N/A'} at ${computed.approvalRates[computed.approvalRates.length-1]?.rate ?? 0}%.`,
-            `Disparity gap: ${(Math.max(...computed.approvalRates.map(r=>r.rate)) - Math.min(...computed.approvalRates.map(r=>r.rate)))} percentage points.`,
-            `Proxy variables detected: ${computed.proxyCols.join(', ') || 'none'}.`,
-          ],
-          predictions: ['Verify API key and retry for AI-powered predictions.'],
-          suggestions: ['Check your OpenAI API key in Settings and re-upload the file for full AI analysis.'],
-        });
-      } finally {
-        setIsAnalyzing(false);
-      }
-    };
-    reader.readAsText(file);
+      addAuditToHistory({
+        date: new Date().toISOString(),
+        fileName: baseData.fileName,
+        parity: computed.metrics.parity,
+        fairnessScore: computed.metrics.fairnessScore,
+        riskLevel: fallbackInsights.riskLevel,
+        summary: fallbackInsights.summary,
+        keyFindings: fallbackInsights.keyFindings,
+        suggestions: fallbackInsights.suggestions,
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
-
-  const handleFileSelect = (e) => { processFile(e.target.files?.[0]); e.target.value = ''; };
-  const handleDrop = (e) => { e.preventDefault(); setIsHovered(false); processFile(e.dataTransfer?.files?.[0]); };
 
   const streamPreview = llmRaw
     ? llmRaw.replace(/[{}[\]"]/g, ' ').replace(/\s+/g, ' ').slice(-180).trim()
@@ -322,7 +372,7 @@ const UploadZone = () => {
 
   return (
     <div style={{ width: '100%', maxWidth: 800, textAlign: 'center' }}>
-      <input ref={fileInputRef} type="file" accept=".csv,.json" style={{ display: 'none' }} onChange={handleFileSelect} />
+      <input ref={fileInputRef} type="file" multiple accept=".csv,.json" style={{ display: 'none' }} onChange={handleFileSelect} />
 
       <AnimatePresence mode="wait">
         {isAnalyzing ? (
@@ -554,7 +604,7 @@ const UploadZone = () => {
                 <div key={i} style={{
                   position: 'absolute', width: 160, height: 160, borderRadius: '50%',
                   background: c, filter: 'blur(70px)', opacity: isHovered ? 0.08 : 0.04,
-                  top: ['5%','50%','10%','48%'][i], left: ['3%','65%','58%','10%'][i],
+                  top: ['5%', '50%', '10%', '48%'][i], left: ['3%', '65%', '58%', '10%'][i],
                   animation: `glow-pulse ${4 + i}s ease-in-out infinite`,
                   animationDelay: `${i * 0.6}s`, pointerEvents: 'none',
                   transition: 'opacity 0.4s',
@@ -595,9 +645,9 @@ const UploadZone = () => {
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
                   {[
                     { label: '① Statistical Analysis', color: P.sapphire },
-                    { label: '② Parity Scoring',       color: P.indigo },
-                    { label: '③ Proxy Detection',      color: P.amber },
-                    { label: '④ AI Deep Analysis',     color: P.violet },
+                    { label: '② Parity Scoring', color: P.indigo },
+                    { label: '③ Proxy Detection', color: P.amber },
+                    { label: '④ AI Deep Analysis', color: P.violet },
                   ].map(({ label, color }) => (
                     <span key={label} className="badge" style={{
                       background: `${color}12`, border: `1px solid ${color}28`, color,
@@ -641,8 +691,8 @@ const UploadZone = () => {
             >
               {[
                 { icon: Lock, label: 'End-to-End Encrypted', color: P.sapphire },
-                { icon: Sparkles, label: 'Gemini 3.1 Pro',   color: P.violet },
-                { icon: Shield, label: 'GDPR Compliant',     color: P.emerald },
+                { icon: Sparkles, label: 'Gemini 3.1 Pro', color: P.violet },
+                { icon: Shield, label: 'GDPR Compliant', color: P.emerald },
               ].map(({ icon: TIcon, label, color }, i) => (
                 <React.Fragment key={label}>
                   {i > 0 && <div style={{ width: 1, height: 18, background: 'var(--border-md)' }} />}
@@ -662,6 +712,6 @@ const UploadZone = () => {
       </AnimatePresence>
     </div>
   );
-};
 
+};
 export default UploadZone;

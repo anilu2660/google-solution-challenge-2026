@@ -35,6 +35,32 @@ export const AppProvider = ({ children }) => {
   /* ── Fairness threshold state ───────────────────────────────────────── */
   const [thresholds, setThresholds] = useState(loadThresholds);
 
+  /* ── Audit History ──────────────────────────────────────────────────── */
+  const loadHistory = () => {
+    try {
+      const saved = localStorage.getItem('equilens-history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  };
+  const [auditHistory, setAuditHistory] = useState(loadHistory);
+
+  const addAuditToHistory = (auditRecord) => {
+    setAuditHistory(prev => {
+      // Avoid duplicate exact timestamps if they somehow happen
+      if (prev.length > 0 && prev[0].date === auditRecord.date) return prev;
+      const updated = [auditRecord, ...prev].slice(0, 50); // Keep last 50 audits
+      localStorage.setItem('equilens-history', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearAuditHistory = () => {
+    setAuditHistory([]);
+    localStorage.removeItem('equilens-history');
+  };
+
   const saveApiKey = (key) => {
     setApiKey(key);
     sessionStorage.setItem('EQUILENS_API_KEY', key);
@@ -69,6 +95,7 @@ export const AppProvider = ({ children }) => {
       analysisPhase, setAnalysisPhase,
       messages, addMessage, setMessages,
       thresholds, saveThresholds,
+      auditHistory, addAuditToHistory, clearAuditHistory,
       resetAudit,
     }}>
       {children}

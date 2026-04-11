@@ -292,7 +292,7 @@ const AICopilot = ({ theme }) => {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={{
         padding: '16px 20px', borderBottom: '1px solid rgba(129,140,248,0.15)',
-        background: 'linear-gradient(180deg, rgba(6,11,24,0.95) 0%, rgba(10,15,30,0.8) 100%)',
+        background: theme === 'dark' ? 'linear-gradient(180deg, rgba(6,11,24,0.95) 0%, rgba(10,15,30,0.8) 100%)' : 'var(--bg-card)',
         backdropFilter: 'blur(20px)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
       }}>
@@ -430,7 +430,7 @@ const AICopilot = ({ theme }) => {
               <div style={{
                 padding: '14px 18px', borderRadius: 14, maxWidth: '85%',
                 fontSize: 13, lineHeight: 1.65,
-                background: msg.role === 'user' ? (theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#ffffff') : (theme === 'dark' ? 'rgba(10,15,30,0.6)' : '#ffffff'),
+                background: msg.role === 'user' ? (theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'var(--bg-card)') : (theme === 'dark' ? 'rgba(10,15,30,0.6)' : 'var(--bg-card-2)'),
                 border: msg.role === 'user' ? (theme === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)') : '1px solid rgba(129,140,248,0.15)',
                 boxShadow: theme === 'dark' ? '0 4px 24px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.04)',
                 color: 'var(--text-1)',
@@ -513,7 +513,7 @@ const AICopilot = ({ theme }) => {
       {/* ── Input Form ──────────────────────────────────────────────────── */}
       <form onSubmit={handleSend} style={{
         padding: '16px', borderTop: '1px solid rgba(129,140,248,0.15)',
-        background: theme === 'dark' ? 'linear-gradient(0deg, rgba(6,11,24,0.95) 0%, rgba(10,15,30,0.8) 100%)' : '#ffffff', flexShrink: 0,
+        background: theme === 'dark' ? 'linear-gradient(0deg, rgba(6,11,24,0.95) 0%, rgba(10,15,30,0.8) 100%)' : 'var(--bg-card)', flexShrink: 0,
         position: 'relative', zIndex: 10, backdropFilter: 'blur(20px)',
       }}>
         {selectedImage && (
@@ -541,7 +541,7 @@ const AICopilot = ({ theme }) => {
             onClick={() => fileInputRef.current.click()}
             style={{
               padding: 10, borderRadius: 12, border: '1px solid rgba(129,140,248,0.3)',
-              background: theme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(129,140,248,0.03)',
+              background: theme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(129,140,248,0.08)',
               color: 'var(--text-1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.3s'
             }}

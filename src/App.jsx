@@ -9,8 +9,9 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Login from './components/Login';
 import NotificationsPanel from './components/NotificationsPanel';
 import ToastStack from './components/ToastStack';
+import AuditHistoryModal from './components/AuditHistoryModal';
 import { useAlerts } from './hooks/useAlerts';
-import { Settings, Sun, Moon, Bell } from 'lucide-react';
+import { Settings, Sun, Moon, Bell, History } from 'lucide-react';
 import './index.css';
 
 /* ── Theme toggle hook ───────────────────────────────────────────────────── */
@@ -71,6 +72,7 @@ const EquiLensApp = () => {
   const { theme, toggle } = useTheme();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const isDark = theme === 'dark';
 
@@ -179,6 +181,19 @@ const EquiLensApp = () => {
             )}
           </button>
 
+          {/* History Button */}
+          <button
+            onClick={() => setIsHistoryOpen(true)}
+            title="Audit History"
+            style={{
+              padding: 8, border: '1px solid var(--border)', borderRadius: 8,
+              background: 'var(--bg-card-2)', color: 'var(--text-2)',
+              cursor: 'pointer', display: 'flex', transition: 'all 0.2s',
+            }}
+          >
+            <History size={16} />
+          </button>
+
           {/* Theme toggle */}
           <button
             onClick={toggle}
@@ -231,6 +246,11 @@ const EquiLensApp = () => {
       {/* ── Settings Modal ──────────────────────────────────────────────────── */}
       <ErrorBoundary name="SettingsModal">
         <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      </ErrorBoundary>
+
+      {/* ── Audit History Modal ──────────────────────────────────────────────── */}
+      <ErrorBoundary name="AuditHistoryModal">
+        <AuditHistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} theme={theme} />
       </ErrorBoundary>
 
       {/* ── Notifications Panel (slide-in drawer) ───────────────────────────── */}
